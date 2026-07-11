@@ -135,7 +135,9 @@ function FlagCell({
 }) {
   return (
     <div className="border border-slate-200 px-2 py-2 text-center">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+        {label}
+      </p>
       <p
         className={`mt-1 font-mono text-sm font-semibold ${
           value === 1 ? "text-slate-900" : "text-slate-400"
@@ -191,7 +193,7 @@ function TcpHeaderPreview({ packet }: { packet: TcpPacket | null }) {
           <HeaderCell label="Reserved" value={packet.reserved} className="border-l-0 border-t-0" />
           <div className="border border-l-0 border-t-0 border-slate-200 px-3 py-2">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Flags</p>
-            <div className="mt-2 grid grid-cols-8">
+            <div className="mt-2 grid grid-cols-4 gap-0">
               <FlagCell label="CWR" value={packet.flags.cwr} />
               <FlagCell label="ECE" value={packet.flags.ece} />
               <FlagCell label="URG" value={packet.flags.urg} />
