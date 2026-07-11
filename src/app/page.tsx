@@ -1,5 +1,5 @@
 import { TopicCard } from "@/components/topic/TopicCard";
-import { topicSections } from "@/lib/topics";
+import { visibleTopicSections } from "@/lib/topics";
 
 export default function Home() {
   return (
@@ -9,7 +9,7 @@ export default function Home() {
       </section>
 
       <div className="mt-6 space-y-6">
-        {topicSections.map((section) => (
+        {visibleTopicSections.map((section) => (
           <section
             key={section.slug}
             className="rounded-lg border border-slate-200 bg-white p-6"

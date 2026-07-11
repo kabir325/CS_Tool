@@ -14,6 +14,7 @@ export type TopicDefinition = {
   introduction: string;
   icon: LucideIcon;
   component: ComponentType;
+  isVisible?: boolean;
 };
 
 export type TopicSection = {

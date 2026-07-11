@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight, Folder, LayoutPanelLeft, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { topicSections } from "@/lib/topics";
+import { visibleTopicSections } from "@/lib/topics";
 
 type AppSidebarProps = {
   isOpen: boolean;
@@ -77,7 +77,7 @@ export function AppSidebar({
 
           <nav className="flex-1 overflow-y-auto p-4">
             <div className="space-y-3">
-              {topicSections.map((section) => {
+              {visibleTopicSections.map((section) => {
                 const isOpen = openSections[section.slug] ?? true;
                 const sectionHasActiveTopic = section.topics.some(
                   (topic) => topic.slug === activeTopicSlug,

@@ -26,6 +26,7 @@ const networkingTopics: TopicDefinition[] = [
       "VLANs let the same physical switch behave like multiple separate switches by grouping ports into logical networks.",
     icon: Network,
     component: VlansExperience,
+    isVisible: false,
   },
   {
     sectionSlug: "networking",
@@ -50,6 +51,12 @@ export const topicSections: TopicSection[] = [
 ];
 
 export const topics = topicSections.flatMap((section) => section.topics);
+export const visibleTopicSections: TopicSection[] = topicSections
+  .map((section) => ({
+    ...section,
+    topics: section.topics.filter((topic) => topic.isVisible !== false),
+  }))
+  .filter((section) => section.topics.length > 0);
 
 export function getSectionBySlug(slug: string) {
   return topicSections.find((section) => section.slug === slug);
