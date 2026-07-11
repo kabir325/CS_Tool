@@ -12,11 +12,18 @@ type TcpPacket = {
   label: string;
   from: string;
   to: string;
+  sourcePort: number;
+  destinationPort: number;
   seq: number;
   ack: number;
-  headerLength: string;
+  dataOffset: string;
+  reserved: string;
+  checksum: string;
+  urgentPointer: string;
   window: string;
   flags: {
+    cwr: 0 | 1;
+    ece: 0 | 1;
     urg: 0 | 1;
     ack: 0 | 1;
     psh: 0 | 1;
@@ -56,57 +63,212 @@ const packetsByStep: Record<number, TcpPacket | null> = {
     label: "SYN Segment",
     from: "Client:49152",
     to: "Server:443",
+    sourcePort: 49152,
+    destinationPort: 443,
     seq: 1200,
     ack: 0,
-    headerLength: "20 bytes",
+    dataOffset: "5 words",
+    reserved: "000",
+    checksum: "0x7c21",
+    urgentPointer: "0",
     window: "64240",
-    flags: { urg: 0, ack: 0, psh: 0, rst: 0, syn: 1, fin: 0 },
+    flags: { cwr: 0, ece: 0, urg: 0, ack: 0, psh: 0, rst: 0, syn: 1, fin: 0 },
     note: "The client proposes a starting sequence number and asks to open a TCP connection.",
   },
   2: {
     label: "SYN-ACK Segment",
     from: "Server:443",
     to: "Client:49152",
+    sourcePort: 443,
+    destinationPort: 49152,
     seq: 8400,
     ack: 1201,
-    headerLength: "20 bytes",
+    dataOffset: "5 words",
+    reserved: "000",
+    checksum: "0x91a4",
+    urgentPointer: "0",
     window: "65535",
-    flags: { urg: 0, ack: 1, psh: 0, rst: 0, syn: 1, fin: 0 },
+    flags: { cwr: 0, ece: 0, urg: 0, ack: 1, psh: 0, rst: 0, syn: 1, fin: 0 },
     note: "The server acknowledges the client's SYN and sends its own initial sequence number.",
   },
   3: {
     label: "ACK Segment",
     from: "Client:49152",
     to: "Server:443",
+    sourcePort: 49152,
+    destinationPort: 443,
     seq: 1201,
     ack: 8401,
-    headerLength: "20 bytes",
+    dataOffset: "5 words",
+    reserved: "000",
+    checksum: "0x7c22",
+    urgentPointer: "0",
     window: "64240",
-    flags: { urg: 0, ack: 1, psh: 0, rst: 0, syn: 0, fin: 0 },
+    flags: { cwr: 0, ece: 0, urg: 0, ack: 1, psh: 0, rst: 0, syn: 0, fin: 0 },
     note: "The client confirms the server sequence number and the TCP connection becomes established.",
   },
 };
 
-function FlagBit({
-  name,
+function HeaderCell({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`border border-slate-200 px-3 py-2 ${className}`}>
+      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function FlagCell({
+  label,
   value,
 }: {
-  name: string;
+  label: string;
   value: 0 | 1;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-slate-200 py-2 last:border-b-0">
-      <span className="font-mono text-sm text-slate-600">{name}</span>
-      <span
-        className={`inline-flex min-w-8 items-center justify-center rounded px-2 py-0.5 text-sm font-semibold ${
-          value === 1
-            ? "bg-slate-900 text-white"
-            : "bg-slate-100 text-slate-600"
+    <div className="border border-slate-200 px-2 py-2 text-center">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p
+        className={`mt-1 font-mono text-sm font-semibold ${
+          value === 1 ? "text-slate-900" : "text-slate-400"
         }`}
       >
         {value}
-      </span>
+      </p>
     </div>
+  );
+}
+
+function TcpHeaderPreview({ packet }: { packet: TcpPacket | null }) {
+  if (!packet) {
+    return (
+      <div className="space-y-3 border-t border-slate-200 pt-6">
+        <h3 className="text-base font-semibold text-slate-900">TCP Header</h3>
+        <p className="text-sm leading-7 text-slate-600">
+          No segment is on the wire yet. When the handshake starts, the active TCP header will appear here and the SYN and ACK bits will change as the exchange progresses.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 border-t border-slate-200 pt-6">
+      <div className="space-y-2">
+        <h3 className="text-base font-semibold text-slate-900">TCP Header</h3>
+        <p className="text-sm leading-7 text-slate-600">{packet.note}</p>
+        <p className="text-sm text-slate-600">
+          <span className="font-medium text-slate-900">{packet.label}</span>
+          {"  "}
+          <span className="font-mono text-slate-500">
+            {packet.from}
+            {" -> "}
+            {packet.to}
+          </span>
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="grid grid-cols-2">
+          <HeaderCell label="Source Port" value={packet.sourcePort} />
+          <HeaderCell label="Destination Port" value={packet.destinationPort} className="border-l-0" />
+        </div>
+        <div className="grid grid-cols-1">
+          <HeaderCell label="Sequence Number" value={packet.seq} className="border-t-0" />
+        </div>
+        <div className="grid grid-cols-1">
+          <HeaderCell label="Acknowledgment Number" value={packet.ack} className="border-t-0" />
+        </div>
+        <div className="grid grid-cols-[1.1fr_0.8fr_2.1fr]">
+          <HeaderCell label="Data Offset" value={packet.dataOffset} className="border-t-0" />
+          <HeaderCell label="Reserved" value={packet.reserved} className="border-l-0 border-t-0" />
+          <div className="border border-l-0 border-t-0 border-slate-200 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Flags</p>
+            <div className="mt-2 grid grid-cols-8">
+              <FlagCell label="CWR" value={packet.flags.cwr} />
+              <FlagCell label="ECE" value={packet.flags.ece} />
+              <FlagCell label="URG" value={packet.flags.urg} />
+              <FlagCell label="ACK" value={packet.flags.ack} />
+              <FlagCell label="PSH" value={packet.flags.psh} />
+              <FlagCell label="RST" value={packet.flags.rst} />
+              <FlagCell label="SYN" value={packet.flags.syn} />
+              <FlagCell label="FIN" value={packet.flags.fin} />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2">
+          <HeaderCell label="Window Size" value={packet.window} className="border-t-0" />
+          <HeaderCell label="Checksum" value={packet.checksum} className="border-l-0 border-t-0" />
+        </div>
+        <div className="grid grid-cols-2">
+          <HeaderCell label="Urgent Pointer" value={packet.urgentPointer} className="border-t-0" />
+          <HeaderCell label="Options" value="None" className="border-l-0 border-t-0" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArrowLabel({
+  x,
+  y,
+  title,
+  detail,
+}: {
+  x: number;
+  y: number;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <g>
+      <rect
+        x={x - 92}
+        y={y - 24}
+        width="184"
+        height="34"
+        rx="10"
+        fill="white"
+        fillOpacity="0.96"
+      />
+      <text x={x} y={y - 10} textAnchor="middle" fill="#0f172a" fontSize="14" fontWeight="700">
+        {title}
+      </text>
+      <text x={x} y={y + 6} textAnchor="middle" fill="#475569" fontSize="12">
+        {detail}
+      </text>
+    </g>
+  );
+}
+
+function NodeLabel({
+  x,
+  title,
+  state,
+  accent,
+}: {
+  x: number;
+  title: string;
+  state: string;
+  accent: string;
+}) {
+  return (
+    <g>
+      <rect x={x} y="54" width="190" height="112" rx="28" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2" />
+      <text x={x + 95} y="95" textAnchor="middle" fill="#0f172a" fontSize="22" fontWeight="700">
+        {title}
+      </text>
+      <text x={x + 95} y="126" textAnchor="middle" fill={accent} fontSize="13" fontWeight="700">
+        State: {state}
+      </text>
+    </g>
   );
 }
 
@@ -193,21 +355,8 @@ export function TcpHandshakeExperience() {
         <div className="space-y-8">
           <div className="overflow-x-auto">
             <svg viewBox="0 0 760 320" className="w-full">
-              <rect x="92" y="54" width="180" height="112" rx="28" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2" />
-              <rect x="488" y="54" width="180" height="112" rx="28" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2" />
-
-              <text x="157" y="95" fill="#0f172a" fontSize="22" fontWeight="700">
-                Client
-              </text>
-              <text x="552" y="95" fill="#0f172a" fontSize="22" fontWeight="700">
-                Server
-              </text>
-              <text x="142" y="124" fill="#7dd3fc" fontSize="13" fontWeight="700">
-                State: {clientState}
-              </text>
-              <text x="538" y="124" fill="#5eead4" fontSize="13" fontWeight="700">
-                State: {serverState}
-              </text>
+              <NodeLabel x={72} title="Client" state={clientState} accent="#38bdf8" />
+              <NodeLabel x={498} title="Server" state={serverState} accent="#2dd4bf" />
 
               <line x1="182" y1="184" x2="182" y2="292" stroke="#334155" strokeWidth="3" />
               <line x1="578" y1="184" x2="578" y2="292" stroke="#334155" strokeWidth="3" />
@@ -220,12 +369,7 @@ export function TcpHandshakeExperience() {
                 >
                   <line x1="210" y1="208" x2="548" y2="208" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
                   <polygon points="548,208 530,198 530,218" fill="#38bdf8" />
-                  <text x="352" y="192" fill="#0f172a" fontSize="14" fontWeight="700">
-                    SYN
-                  </text>
-                  <text x="278" y="228" fill="#475569" fontSize="12">
-                    Seq=1200, Ack=0, Flags=SYN
-                  </text>
+                  <ArrowLabel x={379} y={182} title="SYN" detail="Seq 1200 | Ack 0 | SYN=1 ACK=0" />
                 </motion.g>
               ) : null}
 
@@ -237,12 +381,7 @@ export function TcpHandshakeExperience() {
                 >
                   <line x1="550" y1="238" x2="212" y2="238" stroke="#2dd4bf" strokeWidth="4" strokeLinecap="round" />
                   <polygon points="212,238 230,228 230,248" fill="#2dd4bf" />
-                  <text x="320" y="224" fill="#0f172a" fontSize="14" fontWeight="700">
-                    SYN-ACK
-                  </text>
-                  <text x="277" y="258" fill="#475569" fontSize="12">
-                    Seq=8400, Ack=1201, Flags=SYN,ACK
-                  </text>
+                  <ArrowLabel x={379} y={227} title="SYN-ACK" detail="Seq 8400 | Ack 1201 | SYN=1 ACK=1" />
                 </motion.g>
               ) : null}
 
@@ -254,92 +393,32 @@ export function TcpHandshakeExperience() {
                 >
                   <line x1="210" y1="268" x2="548" y2="268" stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
                   <polygon points="548,268 530,258 530,278" fill="#0f172a" />
-                  <text x="354" y="254" fill="#0f172a" fontSize="14" fontWeight="700">
-                    ACK
-                  </text>
-                  <text x="289" y="288" fill="#475569" fontSize="12">
-                    Seq=1201, Ack=8401, Flags=ACK
-                  </text>
+                  <ArrowLabel x={379} y={272} title="ACK" detail="Seq 1201 | Ack 8401 | SYN=0 ACK=1" />
                 </motion.g>
               ) : null}
             </svg>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.9fr)]">
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold text-slate-900">Connection state</h3>
-              <dl className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Step</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">{currentStep + 1} / {steps.length}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Phase</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">{steps[currentStep].title}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Client state</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">{clientState}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Server state</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">{serverState}</dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold text-slate-900">TCP segment</h3>
-              {activePacket ? (
-                <>
-                  <div className="space-y-2 text-sm text-slate-600">
-                    <p className="font-semibold text-slate-900">{activePacket.label}</p>
-                    <p>
-                      {activePacket.from}
-                      {" -> "}
-                      {activePacket.to}
-                    </p>
-                    <p>{activePacket.note}</p>
-                  </div>
-
-                  <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                    <div>
-                      <span className="text-xs uppercase tracking-[0.14em] text-slate-500">Sequence</span>
-                      <p className="mt-1 font-mono text-slate-900">{activePacket.seq}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs uppercase tracking-[0.14em] text-slate-500">Ack</span>
-                      <p className="mt-1 font-mono text-slate-900">{activePacket.ack}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs uppercase tracking-[0.14em] text-slate-500">Header length</span>
-                      <p className="mt-1 font-mono text-slate-900">{activePacket.headerLength}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs uppercase tracking-[0.14em] text-slate-500">Window</span>
-                      <p className="mt-1 font-mono text-slate-900">{activePacket.window}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-x-6 sm:grid-cols-2">
-                    <div>
-                      <FlagBit name="URG" value={activePacket.flags.urg} />
-                      <FlagBit name="ACK" value={activePacket.flags.ack} />
-                      <FlagBit name="PSH" value={activePacket.flags.psh} />
-                    </div>
-                    <div>
-                      <FlagBit name="RST" value={activePacket.flags.rst} />
-                      <FlagBit name="SYN" value={activePacket.flags.syn} />
-                      <FlagBit name="FIN" value={activePacket.flags.fin} />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-slate-600">
-                  No packet is on the wire yet. The server is listening and the client has not sent the opening SYN.
-                </p>
-              )}
-            </div>
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold text-slate-900">Connection state</h3>
+            <dl className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Step</dt>
+                <dd className="mt-1 font-semibold text-slate-900">{currentStep + 1} / {steps.length}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Phase</dt>
+                <dd className="mt-1 font-semibold text-slate-900">{steps[currentStep].title}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Client state</dt>
+                <dd className="mt-1 font-semibold text-slate-900">{clientState}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">Server state</dt>
+                <dd className="mt-1 font-semibold text-slate-900">{serverState}</dd>
+              </div>
+            </dl>
           </div>
         </div>
       }
@@ -363,11 +442,14 @@ export function TcpHandshakeExperience() {
         />
       }
       explanation={
-        <ExplanationPanel
-          step={steps[currentStep]}
-          currentStep={currentStep}
-          totalSteps={steps.length}
-        />
+        <div className="space-y-6">
+          <ExplanationPanel
+            step={steps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={steps.length}
+          />
+          <TcpHeaderPreview packet={activePacket} />
+        </div>
       }
     />
   );
