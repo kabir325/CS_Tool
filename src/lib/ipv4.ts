@@ -67,11 +67,13 @@ export function generateEqualSubnets(
   baseNetworkNumber: number,
   basePrefix: number,
   targetPrefix: number,
+  limit?: number,
 ) {
   const totalSubnets = 2 ** (targetPrefix - basePrefix);
   const blockSize = 2 ** (32 - targetPrefix);
+  const subnetCountToGenerate = limit ? Math.min(totalSubnets, limit) : totalSubnets;
 
-  return Array.from({ length: totalSubnets }, (_, index) => {
+  return Array.from({ length: subnetCountToGenerate }, (_, index) => {
     const subnetNetworkNumber = baseNetworkNumber + index * blockSize;
     const details = getSubnetDetails(subnetNetworkNumber, targetPrefix);
 

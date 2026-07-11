@@ -18,6 +18,8 @@ import type { TopicStep } from "@/types/topic";
 
 const FALLBACK_NETWORK = "192.168.10.0/24";
 const DOT_PREVIEW_COUNT = 64;
+const MAX_PREVIEW_SUBNETS = 8;
+const MAX_TABLE_SUBNETS = 16;
 const subnetPreviewColors = [
   "bg-slate-900",
   "bg-slate-700",
@@ -226,17 +228,23 @@ export function SubnettingExperience() {
   const effectivePrefix = Math.max(appliedTargetPrefix, parsedNetwork.basePrefix);
   const borrowedBits = effectivePrefix - parsedNetwork.basePrefix;
   const totalSubnets = 2 ** borrowedBits;
-  const allSubnets = generateEqualSubnets(
+  const previewSubnetCount = Math.min(totalSubnets, MAX_PREVIEW_SUBNETS);
+  const previewSubnets = generateEqualSubnets(
     parsedNetwork.normalizedIp,
     parsedNetwork.basePrefix,
     effectivePrefix,
+    previewSubnetCount,
   );
-  const previewSubnetCount = Math.min(totalSubnets, 8);
-  const previewSubnets = allSubnets.slice(0, previewSubnetCount);
   const firstSubnet = getSubnetDetails(parsedNetwork.normalizedIp, effectivePrefix);
   const addressesPerSubnet = firstSubnet.hostCount;
   const dotsPerSubnet = Math.max(4, Math.floor(DOT_PREVIEW_COUNT / previewSubnetCount));
-  const shownTableRows = allSubnets.slice(0, Math.min(allSubnets.length, 16));
+  const shownTableRows = generateEqualSubnets(
+    parsedNetwork.normalizedIp,
+    parsedNetwork.basePrefix,
+    effectivePrefix,
+    Math.min(totalSubnets, MAX_TABLE_SUBNETS),
+  );
+  const hasGeneratedSplit = totalSubnets > 0;
 
   return (
     <TopicLayout
@@ -409,10 +417,10 @@ export function SubnettingExperience() {
           <div className="rounded-lg border border-slate-200 p-4">
             <p className="text-sm font-medium text-slate-900">Address space preview</p>
             <p className="mt-1 text-sm text-slate-600">
-              Dots represent the address range conceptually. After subnetting, the same space is grouped into smaller blocks.
+              Dots represent the address range conceptually. After generation, the dots are grouped and colored by subnet.
             </p>
 
-            {currentStep < 2 ? (
+            {!hasGeneratedSplit ? (
               <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-3 text-sm font-medium text-slate-700">
                   Parent network: {parsedNetwork.cidrInput}
@@ -436,12 +444,20 @@ export function SubnettingExperience() {
                     className="rounded-md border border-slate-200 bg-slate-50 p-4"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-slate-900">{subnet.cidr}</p>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex h-3 w-3 rounded-full ${
+                            subnetPreviewColors[index % subnetPreviewColors.length]
+                          }`}
+                        />
+                        <p className="text-sm font-medium text-slate-900">{subnet.cidr}</p>
+                      </div>
                       <p className="text-xs text-slate-500">
                         {subnet.usableHosts.toLocaleString()} usable hosts
                       </p>
                     </div>
-                    <div className="mt-3 grid grid-cols-8 gap-2">
+                    <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+                      <div className="grid grid-cols-8 gap-2">
                       {Array.from({ length: dotsPerSubnet }, (_, dotIndex) => {
                         const isReserved =
                           currentStep >= 3 &&
@@ -458,6 +474,7 @@ export function SubnettingExperience() {
                           />
                         );
                       })}
+                      </div>
                     </div>
                     <p className="mt-3 text-xs leading-6 text-slate-500">
                       Reserved: {subnet.networkAddress} (network) and {subnet.broadcastAddress} (broadcast)
@@ -466,6 +483,12 @@ export function SubnettingExperience() {
                 ))}
               </div>
             )}
+
+            {totalSubnets > previewSubnetCount ? (
+              <p className="mt-4 text-xs text-slate-500">
+                Showing the first {previewSubnetCount} subnet groups out of {totalSubnets.toLocaleString()} total subnets.
+              </p>
+            ) : null}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
