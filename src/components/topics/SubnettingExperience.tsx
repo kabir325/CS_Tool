@@ -11,7 +11,8 @@ import {
   generateEqualSubnets,
   getSubnetDetails,
   parseIpv4Network,
-  planSubnetPrefixFromRequirements,
+  planSubnetPrefixFromHostCount,
+  planSubnetPrefixFromSubnetCount,
 } from "@/lib/ipv4";
 import type { TopicStep } from "@/types/topic";
 
@@ -29,7 +30,7 @@ const subnetPreviewColors = [
 export function SubnettingExperience() {
   const [networkInput, setNetworkInput] = useState(FALLBACK_NETWORK);
   const parsedNetwork = useMemo(() => parseIpv4Network(networkInput), [networkInput]);
-  const [mode, setMode] = useState<"prefix" | "requirements">("prefix");
+  const [mode, setMode] = useState<"subnet" | "hosts" | "subnets">("subnet");
   const [targetPrefixInput, setTargetPrefixInput] = useState(26);
   const [desiredSubnets, setDesiredSubnets] = useState(4);
   const [desiredHosts, setDesiredHosts] = useState(62);
@@ -105,7 +106,7 @@ export function SubnettingExperience() {
       return;
     }
 
-    if (mode === "prefix") {
+    if (mode === "subnet") {
       const safePrefix = Math.min(
         Math.max(targetPrefixInput, parsedNetwork.basePrefix),
         30,
@@ -120,15 +121,16 @@ export function SubnettingExperience() {
       return;
     }
 
-    const plan = planSubnetPrefixFromRequirements(
-      parsedNetwork.basePrefix,
-      desiredSubnets,
-      desiredHosts,
-    );
+    const plan =
+      mode === "hosts"
+        ? planSubnetPrefixFromHostCount(parsedNetwork.basePrefix, desiredHosts)
+        : planSubnetPrefixFromSubnetCount(parsedNetwork.basePrefix, desiredSubnets);
 
     if (!plan) {
       setError(
-        "Those requirements do not fit inside the parent network with equal-sized subnets. Lower the host count, lower the subnet count, or start from a larger network.",
+        mode === "hosts"
+          ? "That host requirement does not fit inside the parent network. Lower the host count or start from a larger network."
+          : "That subnet requirement does not fit inside the parent network. Lower the subnet count or start from a larger network.",
       );
       return;
     }
@@ -165,7 +167,7 @@ export function SubnettingExperience() {
         process={
           <ol className="list-decimal space-y-2 pl-5">
             <li>Identify the original network and prefix.</li>
-            <li>Decide the new prefix or the required number of subnets and hosts.</li>
+            <li>Choose whether to calculate by subnet prefix, by required hosts, or by required subnets.</li>
             <li>Generate the new subnet boundaries.</li>
             <li>Reserve the network and broadcast address in every subnet.</li>
           </ol>
@@ -256,7 +258,7 @@ export function SubnettingExperience() {
           <p>Use this order when solving subnetting questions:</p>
           <ol className="list-decimal space-y-2 pl-5">
             <li>Write down the original network and its prefix.</li>
-            <li>Decide whether you are subnetting to a new prefix or to satisfy subnet and host requirements.</li>
+            <li>Choose one mode: by subnet prefix, by number of hosts, or by number of subnets.</li>
             <li>Work out the resulting subnet mask and how many equal subnets it creates.</li>
             <li>For each subnet, mark the first address as the network address and the last address as the broadcast address.</li>
             <li>Everything in between is usable host space.</li>
@@ -291,32 +293,43 @@ export function SubnettingExperience() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setMode("prefix")}
+              onClick={() => setMode("subnet")}
               className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                mode === "prefix"
+                mode === "subnet"
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-300 bg-white text-slate-700"
               }`}
             >
-              Target prefix
+              Based on subnet
             </button>
             <button
               type="button"
-              onClick={() => setMode("requirements")}
+              onClick={() => setMode("hosts")}
               className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                mode === "requirements"
+                mode === "hosts"
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-300 bg-white text-slate-700"
               }`}
             >
-              Required hosts and subnets
+              Based on number of hosts
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("subnets")}
+              className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                mode === "subnets"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-300 bg-white text-slate-700"
+              }`}
+            >
+              Based on number of subnets
             </button>
           </div>
 
-          {mode === "prefix" ? (
+          {mode === "subnet" ? (
             <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
               <label className="block space-y-2">
-                <span className="text-sm font-medium text-slate-900">Target prefix</span>
+                <span className="text-sm font-medium text-slate-900">Target subnet prefix</span>
                 <input
                   type="number"
                   min={parsedNetwork.basePrefix}
@@ -336,18 +349,8 @@ export function SubnettingExperience() {
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-slate-900">How many subnets?</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={desiredSubnets}
-                  onChange={(event) => setDesiredSubnets(Number(event.target.value))}
-                  className="w-full rounded-md border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-900"
-                />
-              </label>
+          ) : mode === "hosts" ? (
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-900">
                   Usable hosts needed in each subnet
@@ -357,6 +360,28 @@ export function SubnettingExperience() {
                   min={1}
                   value={desiredHosts}
                   onChange={(event) => setDesiredHosts(Number(event.target.value))}
+                  className="w-full rounded-md border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-900"
+                />
+              </label>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  className="rounded-md border border-slate-900 bg-slate-900 px-4 py-3 text-sm font-medium text-white"
+                >
+                  Generate subnets
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-900">How many subnets?</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={desiredSubnets}
+                  onChange={(event) => setDesiredSubnets(Number(event.target.value))}
                   className="w-full rounded-md border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-900"
                 />
               </label>

@@ -5,10 +5,7 @@ export default function Home() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8">
       <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Topics</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-          Pick a topic from the sidebar or the sections below. The structure is grouped by subject so more folders and topics can be added later without changing the layout.
-        </p>
+        <h1 className="text-2xl font-semibold text-slate-900">Library</h1>
       </section>
 
       <div className="mt-6 space-y-6">

@@ -114,6 +114,46 @@ export function planSubnetPrefixFromRequirements(
   };
 }
 
+export function planSubnetPrefixFromSubnetCount(
+  basePrefix: number,
+  subnetCount: number,
+): SubnetPlanResult | null {
+  const safeSubnetCount = Math.max(1, subnetCount);
+  const subnetBits = safeSubnetCount > 1 ? Math.ceil(Math.log2(safeSubnetCount)) : 0;
+  const targetPrefix = basePrefix + subnetBits;
+
+  if (targetPrefix > 30) {
+    return null;
+  }
+
+  return {
+    targetPrefix,
+    totalSubnets: 2 ** subnetBits,
+    usableHostsPerSubnet: getSubnetDetails(0, targetPrefix).usableHosts,
+    reason: `Need at least ${safeSubnetCount} subnet${safeSubnetCount === 1 ? "" : "s"}.`,
+  };
+}
+
+export function planSubnetPrefixFromHostCount(
+  basePrefix: number,
+  hostsPerSubnet: number,
+): SubnetPlanResult | null {
+  const safeHostsPerSubnet = Math.max(1, hostsPerSubnet);
+  const requiredHostBits = Math.ceil(Math.log2(safeHostsPerSubnet + 2));
+  const targetPrefix = 32 - requiredHostBits;
+
+  if (targetPrefix < basePrefix || targetPrefix > 30) {
+    return null;
+  }
+
+  return {
+    targetPrefix,
+    totalSubnets: 2 ** (targetPrefix - basePrefix),
+    usableHostsPerSubnet: getSubnetDetails(0, targetPrefix).usableHosts,
+    reason: `Need at least ${safeHostsPerSubnet} usable host${safeHostsPerSubnet === 1 ? "" : "s"} per subnet.`,
+  };
+}
+
 export function getNetworkAddressNumber(ipNumber: number, prefix: number) {
   const mask = prefixToMask(prefix);
   return (ipNumber & mask) >>> 0;
