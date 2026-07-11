@@ -22,23 +22,25 @@ export function StepIndicator({
             key={step.title}
             type="button"
             onClick={() => onStepSelect(index)}
-            className={`rounded-2xl border px-4 py-3 text-left transition ${
+            className={`rounded-md border px-4 py-3 text-left transition ${
               isActive
-                ? "border-cyan-300/60 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(103,232,249,0.12)]"
-                : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-300 bg-white hover:bg-slate-50"
             }`}
           >
             <div className="flex items-center gap-3">
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
                   isActive || isComplete
-                    ? "bg-cyan-300 text-slate-950"
-                    : "bg-slate-800 text-slate-300"
+                    ? "bg-white text-slate-900"
+                    : "bg-slate-100 text-slate-600"
                 }`}
               >
                 {index + 1}
               </span>
-              <span className="text-sm font-medium text-slate-100">{step.title}</span>
+              <span className={`text-sm font-medium ${isActive ? "text-white" : "text-slate-800"}`}>
+                {step.title}
+              </span>
             </div>
           </button>
         );

@@ -5,6 +5,13 @@ export type ParsedIpv4Network = {
   normalizedAddress: string;
 };
 
+export type SubnetPlanResult = {
+  targetPrefix: number;
+  totalSubnets: number;
+  usableHostsPerSubnet: number;
+  reason: string;
+};
+
 export function parseIpv4Network(input: string): ParsedIpv4Network | null {
   const [rawIp, rawPrefix] = input.trim().split("/");
   const octets = rawIp.split(".");
@@ -45,12 +52,65 @@ export function getSubnetDetails(networkNumber: number, prefix: number) {
   return {
     networkAddress: numberToIp(networkNumber),
     broadcastAddress: numberToIp(broadcastNumber),
+    firstHostAddress: numberToIp(firstHostNumber),
+    lastHostAddress: numberToIp(lastHostNumber),
     hostRange:
       hostCount > 2
         ? `${numberToIp(firstHostNumber)} - ${numberToIp(lastHostNumber)}`
         : "Point-to-point subnet",
     usableHosts: prefix >= 31 ? 0 : Math.max(hostCount - 2, 0),
     hostCount,
+  };
+}
+
+export function generateEqualSubnets(
+  baseNetworkNumber: number,
+  basePrefix: number,
+  targetPrefix: number,
+) {
+  const totalSubnets = 2 ** (targetPrefix - basePrefix);
+  const blockSize = 2 ** (32 - targetPrefix);
+
+  return Array.from({ length: totalSubnets }, (_, index) => {
+    const subnetNetworkNumber = baseNetworkNumber + index * blockSize;
+    const details = getSubnetDetails(subnetNetworkNumber, targetPrefix);
+
+    return {
+      id: index + 1,
+      prefix: targetPrefix,
+      cidr: `${details.networkAddress}/${targetPrefix}`,
+      ...details,
+    };
+  });
+}
+
+export function planSubnetPrefixFromRequirements(
+  basePrefix: number,
+  subnetCount: number,
+  hostsPerSubnet: number,
+): SubnetPlanResult | null {
+  const requiredSubnetBits =
+    subnetCount > 1 ? Math.ceil(Math.log2(Math.max(subnetCount, 1))) : 0;
+  const targetPrefix = basePrefix + requiredSubnetBits;
+
+  if (targetPrefix > 30) {
+    return null;
+  }
+
+  const usableHostsPerSubnet = getSubnetDetails(0, targetPrefix).usableHosts;
+
+  if (usableHostsPerSubnet < hostsPerSubnet) {
+    return null;
+  }
+
+  return {
+    targetPrefix,
+    totalSubnets: 2 ** requiredSubnetBits,
+    usableHostsPerSubnet,
+    reason:
+      subnetCount > 1 || hostsPerSubnet > 0
+        ? `Need ${subnetCount} subnet${subnetCount === 1 ? "" : "s"} with at least ${hostsPerSubnet} usable host${hostsPerSubnet === 1 ? "" : "s"} each.`
+        : "Uses the original network size.",
   };
 }
 

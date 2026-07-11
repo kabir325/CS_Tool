@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { AppShell } from "@/components/shell/AppShell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,9 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Networking, Explained Visually",
-  description:
-    "Interactive networking visualizations for subnetting, VLANs, and TCP handshakes.",
+  title: "Visualization Library",
+  description: "Interactive learning topics and visual explanation tools.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
-        {children}
+        <AppShell>{children}</AppShell>
         <Analytics />
       </body>
     </html>

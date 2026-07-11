@@ -94,20 +94,34 @@ export function VlansExperience() {
 
   return (
     <TopicLayout
+      sectionTitle="Networking"
       title="VLANs"
-      introduction="Watch how a switch changes its broadcast behavior when ports are grouped into VLANs instead of sharing one flat Layer 2 network."
-      meta={[
-        { label: "Difficulty", value: "Intermediate" },
-        { label: "Reading time", value: "6 min" },
-        { label: "Broadcast source", value: `PC ${sourcePc}` },
-      ]}
+      introduction="Use this page to see how VLANs split one switch into separate Layer 2 broadcast domains."
+      overview={
+        <div className="space-y-3">
+          <p>
+            A VLAN is a logical network on a switch. Devices in different VLANs can be plugged into the same switch but still behave as if they are on separate Layer 2 networks.
+          </p>
+          <p>
+            The big idea is that broadcasts stay inside the VLAN unless routing is introduced.
+          </p>
+        </div>
+      }
+      process={
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>Assign switch ports to VLAN IDs.</li>
+          <li>Put hosts in the same VLAN if they should share a broadcast domain.</li>
+          <li>Send a broadcast from one host.</li>
+          <li>Observe that only devices in the same VLAN receive it.</li>
+        </ol>
+      }
       tools={
         <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
             <label className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-100">Enable VLANs</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="text-sm font-medium text-slate-900">Enable VLANs</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
                   Toggle between a flat network and isolated broadcast domains.
                 </p>
               </div>
@@ -120,11 +134,11 @@ export function VlansExperience() {
             </label>
             <div className="mt-5 space-y-3">
               <label className="block space-y-2">
-                <span className="text-sm font-medium text-slate-100">Broadcast from</span>
+                <span className="text-sm font-medium text-slate-900">Broadcast from</span>
                 <select
                   value={sourcePc}
                   onChange={(event) => setSourcePc(event.target.value as DeviceKey)}
-                  className="w-full rounded-2xl border border-white/12 bg-slate-950/70 px-4 py-3 text-slate-100 outline-none"
+                  className="w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none"
                 >
                   <option value="A">PC A</option>
                   <option value="B">PC B</option>
@@ -134,7 +148,7 @@ export function VlansExperience() {
               <button
                 type="button"
                 onClick={() => selectStep(3)}
-                className="w-full rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-medium text-cyan-100 transition hover:bg-cyan-300/16"
+                className="w-full rounded-md border border-slate-900 bg-slate-900 px-4 py-3 text-sm font-medium text-white"
               >
                 Broadcast Packet
               </button>
@@ -145,9 +159,9 @@ export function VlansExperience() {
             {(Object.keys(devicePositions) as DeviceKey[]).map((device) => (
               <label
                 key={device}
-                className="rounded-3xl border border-white/10 bg-slate-950/45 p-4"
+                className="rounded-md border border-slate-200 bg-slate-50 p-4"
               >
-                <span className="text-sm font-medium text-slate-100">PC {device} VLAN ID</span>
+                <span className="text-sm font-medium text-slate-900">PC {device} VLAN ID</span>
                 <select
                   value={vlanIds[device]}
                   onChange={(event) =>
@@ -156,7 +170,7 @@ export function VlansExperience() {
                       [device]: Number(event.target.value),
                     }))
                   }
-                  className="mt-3 w-full rounded-2xl border border-white/12 bg-slate-950/70 px-4 py-3 text-slate-100 outline-none"
+                  className="mt-3 w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none"
                 >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -169,9 +183,9 @@ export function VlansExperience() {
       }
       visualization={
         <div className="space-y-5">
-          <div className="overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/55 p-4">
+          <div className="overflow-hidden rounded-lg border border-slate-200 p-4">
             <svg viewBox="0 0 760 380" className="w-full">
-              <text x="280" y="42" fill="#dbeafe" fontSize="22" fontWeight="700">
+              <text x="280" y="42" fill="#0f172a" fontSize="22" fontWeight="700">
                 Managed Switch
               </text>
               <motion.rect
@@ -181,15 +195,15 @@ export function VlansExperience() {
                 ry="28"
                 width="200"
                 height="180"
-                fill={vlansEnabled ? "#0f766e" : "#1e293b"}
+                fill={vlansEnabled ? "#d1fae5" : "#e2e8f0"}
                 initial={false}
                 animate={{ opacity: currentStep >= 1 ? 1 : 0.86 }}
                 transition={{ duration: 0.35 }}
               />
-              <text x="342" y="150" fill="#e2e8f0" fontSize="16" fontWeight="700">
+              <text x="342" y="150" fill="#0f172a" fontSize="16" fontWeight="700">
                 VLAN Engine
               </text>
-              <text x="319" y="177" fill="#cbd5e1" fontSize="13">
+              <text x="319" y="177" fill="#475569" fontSize="13">
                 {vlansEnabled ? "Broadcasts filtered by VLAN" : "Flooding all access ports"}
               </text>
 
@@ -220,14 +234,14 @@ export function VlansExperience() {
                       height="48"
                       rx="18"
                       ry="18"
-                      fill={isSource ? "#0f172a" : "#111827"}
-                      stroke={isSource ? "#67e8f9" : "#334155"}
+                      fill={isSource ? "#ffffff" : "#f8fafc"}
+                      stroke={isSource ? "#0f172a" : "#94a3b8"}
                       strokeWidth="2"
                     />
                     <text
                       x={device === "C" ? node.x : node.x + 24}
                       y={node.y + 20}
-                      fill="#e2e8f0"
+                      fill="#0f172a"
                       fontSize="14"
                       fontWeight="700"
                     >
@@ -301,7 +315,7 @@ export function VlansExperience() {
                       <text
                         x={(380 + targetX) / 2 - 22}
                         y={(182 + node.y + 24) / 2 - 8}
-                        fill="#fecdd3"
+                        fill="#be123c"
                         fontSize="11"
                         fontWeight="700"
                       >
@@ -328,12 +342,12 @@ export function VlansExperience() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                className="rounded-md border border-slate-200 bg-slate-50 p-4"
               >
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                   {item.label}
                 </p>
-                <p className="mt-3 text-sm font-semibold text-slate-100">{item.value}</p>
+                <p className="mt-3 text-sm font-semibold text-slate-900">{item.value}</p>
               </div>
             ))}
           </div>

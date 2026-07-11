@@ -68,24 +68,53 @@ export function TcpHandshakeExperience() {
 
   return (
     <TopicLayout
+      sectionTitle="Networking"
       title="TCP Three-Way Handshake"
-      introduction="Step through the exact exchange TCP uses to establish reliability before either side starts sending application data."
-      meta={[
-        { label: "Difficulty", value: "Beginner" },
-        { label: "Reading time", value: "5 min" },
-        { label: "Protocol phase", value: steps[currentStep].title },
-      ]}
+      introduction="Use this page to follow the connection setup sequence that TCP uses before data transfer begins."
+      overview={
+        <div className="space-y-3">
+          <p>
+            TCP does not start sending application data immediately. First it confirms that both sides are reachable and synchronizes sequence numbers.
+          </p>
+          <p>
+            That setup process is called the three-way handshake.
+          </p>
+        </div>
+      }
+      process={
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>The client sends a SYN.</li>
+          <li>The server replies with SYN-ACK.</li>
+          <li>The client responds with ACK.</li>
+          <li>Both sides move into the ESTABLISHED state.</li>
+        </ol>
+      }
+      tools={
+        <div className="space-y-4">
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-medium text-slate-900">Packet meanings</p>
+            <div className="mt-3 space-y-2 text-sm text-slate-600">
+              <p><span className="font-medium text-slate-900">SYN:</span> Start the connection.</p>
+              <p><span className="font-medium text-slate-900">SYN-ACK:</span> Confirm the SYN and send the server sequence number.</p>
+              <p><span className="font-medium text-slate-900">ACK:</span> Confirm the server response and finish setup.</p>
+            </div>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            Current focus: <span className="font-medium text-slate-900">{steps[currentStep].title}</span>
+          </div>
+        </div>
+      }
       visualization={
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/55 p-4">
+          <div className="overflow-hidden rounded-lg border border-slate-200 p-4">
             <svg viewBox="0 0 760 320" className="w-full">
-              <rect x="92" y="54" width="180" height="112" rx="28" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
-              <rect x="488" y="54" width="180" height="112" rx="28" fill="#0f172a" stroke="#2dd4bf" strokeWidth="2" />
+              <rect x="92" y="54" width="180" height="112" rx="28" fill="#ffffff" stroke="#38bdf8" strokeWidth="2" />
+              <rect x="488" y="54" width="180" height="112" rx="28" fill="#ffffff" stroke="#2dd4bf" strokeWidth="2" />
 
-              <text x="157" y="95" fill="#e0f2fe" fontSize="22" fontWeight="700">
+              <text x="157" y="95" fill="#0f172a" fontSize="22" fontWeight="700">
                 Client
               </text>
-              <text x="552" y="95" fill="#ccfbf1" fontSize="22" fontWeight="700">
+              <text x="552" y="95" fill="#0f172a" fontSize="22" fontWeight="700">
                 Server
               </text>
               <text x="142" y="124" fill="#7dd3fc" fontSize="13" fontWeight="700">
@@ -106,7 +135,7 @@ export function TcpHandshakeExperience() {
                 >
                   <line x1="210" y1="208" x2="548" y2="208" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
                   <polygon points="548,208 530,198 530,218" fill="#38bdf8" />
-                  <text x="352" y="192" fill="#e0f2fe" fontSize="14" fontWeight="700">
+                  <text x="352" y="192" fill="#0f172a" fontSize="14" fontWeight="700">
                     SYN
                   </text>
                 </motion.g>
@@ -120,7 +149,7 @@ export function TcpHandshakeExperience() {
                 >
                   <line x1="550" y1="238" x2="212" y2="238" stroke="#2dd4bf" strokeWidth="4" strokeLinecap="round" />
                   <polygon points="212,238 230,228 230,248" fill="#2dd4bf" />
-                  <text x="320" y="224" fill="#ccfbf1" fontSize="14" fontWeight="700">
+                  <text x="320" y="224" fill="#0f172a" fontSize="14" fontWeight="700">
                     SYN-ACK
                   </text>
                 </motion.g>
@@ -132,9 +161,9 @@ export function TcpHandshakeExperience() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.45 }}
                 >
-                  <line x1="210" y1="268" x2="548" y2="268" stroke="#f8fafc" strokeWidth="4" strokeLinecap="round" />
-                  <polygon points="548,268 530,258 530,278" fill="#f8fafc" />
-                  <text x="354" y="254" fill="#f8fafc" fontSize="14" fontWeight="700">
+                  <line x1="210" y1="268" x2="548" y2="268" stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
+                  <polygon points="548,268 530,258 530,278" fill="#0f172a" />
+                  <text x="354" y="254" fill="#0f172a" fontSize="14" fontWeight="700">
                     ACK
                   </text>
                 </motion.g>
@@ -145,17 +174,18 @@ export function TcpHandshakeExperience() {
           <div className="grid gap-4 md:grid-cols-3">
             {[
               { label: "Step", value: `${currentStep + 1} / ${steps.length}` },
+              { label: "Current phase", value: steps[currentStep].title },
               { label: "Client state", value: clientState },
               { label: "Server state", value: serverState },
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                className="rounded-md border border-slate-200 bg-slate-50 p-4"
               >
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                   {item.label}
                 </p>
-                <p className="mt-3 text-sm font-semibold text-slate-100">{item.value}</p>
+                <p className="mt-3 text-sm font-semibold text-slate-900">{item.value}</p>
               </div>
             ))}
           </div>

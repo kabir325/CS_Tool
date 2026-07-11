@@ -2,46 +2,58 @@ import { ArrowRightLeft, Network, SplitSquareVertical } from "lucide-react";
 import { SubnettingExperience } from "@/components/topics/SubnettingExperience";
 import { TcpHandshakeExperience } from "@/components/topics/TcpHandshakeExperience";
 import { VlansExperience } from "@/components/topics/VlansExperience";
-import type { TopicDefinition } from "@/types/topic";
+import type { TopicDefinition, TopicSection } from "@/types/topic";
 
-export const topics: TopicDefinition[] = [
+const networkingTopics: TopicDefinition[] = [
   {
+    sectionSlug: "networking",
     slug: "subnetting",
     title: "Subnetting",
     description:
-      "Borrow bits, divide address space, and see network boundaries change as the prefix moves.",
-    difficulty: "Beginner",
-    readingTime: "7 min read",
+      "Split an IPv4 network into smaller equal-sized networks and inspect ranges, usable hosts, and reserved addresses.",
     introduction:
-      "Follow the network block as it splits into smaller subnets and updates the network address, broadcast address, and usable host range.",
+      "Subnetting divides one large IPv4 network into smaller networks so address usage, broadcast scope, and segmentation become easier to control.",
     icon: SplitSquareVertical,
     component: SubnettingExperience,
   },
   {
+    sectionSlug: "networking",
     slug: "vlans",
     title: "VLANs",
     description:
-      "Visualize how a switch isolates broadcasts when access ports are assigned to different VLAN IDs.",
-    difficulty: "Intermediate",
-    readingTime: "6 min read",
+      "Understand how one switch can create separate Layer 2 domains and contain broadcasts inside each VLAN.",
     introduction:
-      "Toggle VLAN mode, assign ports, and broadcast a packet to see how segmentation reshapes the Layer 2 domain.",
+      "VLANs let the same physical switch behave like multiple separate switches by grouping ports into logical networks.",
     icon: Network,
     component: VlansExperience,
   },
   {
+    sectionSlug: "networking",
     slug: "tcp-three-way-handshake",
     title: "TCP Three-Way Handshake",
     description:
-      "Step through SYN, SYN-ACK, and ACK to understand how both peers reach an established state.",
-    difficulty: "Beginner",
-    readingTime: "5 min read",
+      "Follow SYN, SYN-ACK, and ACK and see how both peers reach an established TCP connection.",
     introduction:
-      "Watch the TCP connection setup sequence unfold and track how client and server states change at each step.",
+      "The three-way handshake is the process TCP uses to synchronize sequence numbers and confirm both sides are ready.",
     icon: ArrowRightLeft,
     component: TcpHandshakeExperience,
   },
 ];
+
+export const topicSections: TopicSection[] = [
+  {
+    slug: "networking",
+    title: "Networking",
+    description: "Core networking concepts and packet flow visualizations.",
+    topics: networkingTopics,
+  },
+];
+
+export const topics = topicSections.flatMap((section) => section.topics);
+
+export function getSectionBySlug(slug: string) {
+  return topicSections.find((section) => section.slug === slug);
+}
 
 export function getTopicBySlug(slug: string) {
   return topics.find((topic) => topic.slug === slug);

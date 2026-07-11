@@ -23,7 +23,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${topic.title} | Networking, Explained Visually`,
+    title: `${topic.title} | Visualization Library`,
     description: topic.description,
   };
 }
