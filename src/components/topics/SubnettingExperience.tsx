@@ -1,12 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { AnimationControls } from "@/components/topic/AnimationControls";
-import { ExplanationPanel } from "@/components/topic/ExplanationPanel";
-import { StepIndicator } from "@/components/topic/StepIndicator";
 import { TopicLayout } from "@/components/topic/TopicLayout";
-import { useAnimationTimeline } from "@/hooks/use-animation-timeline";
 import {
   generateEqualSubnets,
   getSubnetDetails,
@@ -14,7 +9,6 @@ import {
   planSubnetPrefixFromHostCount,
   planSubnetPrefixFromSubnetCount,
 } from "@/lib/ipv4";
-import type { TopicStep } from "@/types/topic";
 
 const FALLBACK_NETWORK = "192.168.10.0/24";
 const DOT_PREVIEW_COUNT = 64;
@@ -37,69 +31,19 @@ export function SubnettingExperience() {
   const [desiredSubnets, setDesiredSubnets] = useState(4);
   const [desiredHosts, setDesiredHosts] = useState(62);
   const [appliedTargetPrefix, setAppliedTargetPrefix] = useState(26);
-  const [plannerNote, setPlannerNote] = useState(
-    "Split the network by choosing a target prefix.",
-  );
   const [error, setError] = useState<string | null>(null);
-
-  const steps = useMemo<TopicStep[]>(() => {
-    if (!parsedNetwork) {
-      return [
-        {
-          title: "Enter a valid network",
-          description:
-            "Use CIDR notation such as 192.168.10.0/24 so the tool can normalize the parent network before it generates subnets.",
-        },
-      ];
-    }
-
-    const borrowedBits = appliedTargetPrefix - parsedNetwork.basePrefix;
-    const totalSubnets = 2 ** borrowedBits;
-    const firstSubnet = getSubnetDetails(parsedNetwork.normalizedIp, appliedTargetPrefix);
-
-    return [
-      {
-        title: "Start from the parent network",
-        description: `${parsedNetwork.cidrInput} is the original block. Before splitting it, every address in that range belongs to the same parent network.`,
-      },
-      {
-        title: "Choose the new subnet size",
-        description: `Moving from /${parsedNetwork.basePrefix} to /${appliedTargetPrefix} borrows ${borrowedBits} bit${borrowedBits === 1 ? "" : "s"} from the host portion to create subnet IDs.`,
-      },
-      {
-        title: "Split the address range",
-        description: `That creates ${totalSubnets} equal-sized subnet${totalSubnets === 1 ? "" : "s"}. Every subnet gets the same prefix length and the same number of addresses.`,
-      },
-      {
-        title: "Reserve the edge addresses",
-        description: `Inside each subnet, the network address and the broadcast address are reserved. In the first subnet, usable hosts run from ${firstSubnet.firstHostAddress} to ${firstSubnet.lastHostAddress}.`,
-      },
-    ];
-  }, [appliedTargetPrefix, parsedNetwork]);
-
-  const {
-    currentStep,
-    isPlaying,
-    canGoBack,
-    canGoForward,
-    play,
-    pause,
-    reset,
-    nextStep,
-    previousStep,
-    selectStep,
-  } = useAnimationTimeline({
-    stepCount: steps.length,
-    autoPlayInterval: 2100,
-  });
+  const [hasGenerated, setHasGenerated] = useState(false);
 
   useEffect(() => {
     if (!parsedNetwork) {
+      setHasGenerated(false);
       return;
     }
 
     setTargetPrefixInput((current) => Math.max(current, parsedNetwork.basePrefix));
     setAppliedTargetPrefix((current) => Math.max(current, parsedNetwork.basePrefix));
+    setHasGenerated(false);
+    setError(null);
   }, [parsedNetwork]);
 
   function handleGenerate() {
@@ -115,11 +59,8 @@ export function SubnettingExperience() {
       );
 
       setAppliedTargetPrefix(safePrefix);
-      setPlannerNote(
-        `Split ${parsedNetwork.cidrInput} into /${safePrefix} networks.`,
-      );
       setError(null);
-      reset();
+      setHasGenerated(true);
       return;
     }
 
@@ -138,20 +79,9 @@ export function SubnettingExperience() {
     }
 
     setAppliedTargetPrefix(plan.targetPrefix);
-    setPlannerNote(`${plan.reason} Recommended equal-size subnet: /${plan.targetPrefix}.`);
     setError(null);
-    reset();
+    setHasGenerated(true);
   }
-
-  useEffect(() => {
-    if (!parsedNetwork) {
-      return;
-    }
-
-    handleGenerate();
-    // We only want the initial auto-generation when the parent network changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parsedNetwork?.cidrInput]);
 
   if (!parsedNetwork) {
     return (
@@ -168,10 +98,10 @@ export function SubnettingExperience() {
         }
         process={
           <ol className="list-decimal space-y-2 pl-5">
-            <li>Identify the original network and prefix.</li>
-            <li>Choose whether to calculate by subnet prefix, by required hosts, or by required subnets.</li>
-            <li>Generate the new subnet boundaries.</li>
-            <li>Reserve the network and broadcast address in every subnet.</li>
+            <li>Start with one parent network and its prefix length.</li>
+            <li>Borrow bits from the host portion to create smaller networks.</li>
+            <li>Each smaller network gets its own network address, host range, and broadcast address.</li>
+            <li>The first and last addresses in every subnet are reserved.</li>
           </ol>
         }
         tools={
@@ -195,32 +125,7 @@ export function SubnettingExperience() {
             The visualizer appears as soon as the network is valid.
           </div>
         }
-        controls={
-          <AnimationControls
-            isPlaying={isPlaying}
-            canGoBack={canGoBack}
-            canGoForward={canGoForward}
-            onPlay={play}
-            onPause={pause}
-            onReset={reset}
-            onNext={nextStep}
-            onPrevious={previousStep}
-          />
-        }
-        stepIndicator={
-          <StepIndicator
-            steps={steps}
-            currentStep={currentStep}
-            onStepSelect={selectStep}
-          />
-        }
-        explanation={
-          <ExplanationPanel
-            step={steps[currentStep]}
-            currentStep={currentStep}
-            totalSteps={steps.length}
-          />
-        }
+        visualizationTitle="Address Space"
       />
     );
   }
@@ -244,7 +149,6 @@ export function SubnettingExperience() {
     effectivePrefix,
     Math.min(totalSubnets, MAX_TABLE_SUBNETS),
   );
-  const hasGeneratedSplit = totalSubnets > 0;
 
   return (
     <TopicLayout
@@ -263,13 +167,13 @@ export function SubnettingExperience() {
       }
       process={
         <div className="space-y-3">
-          <p>Use this order when solving subnetting questions:</p>
+          <p>Subnetting works like this:</p>
           <ol className="list-decimal space-y-2 pl-5">
-            <li>Write down the original network and its prefix.</li>
-            <li>Choose one mode: by subnet prefix, by number of hosts, or by number of subnets.</li>
-            <li>Work out the resulting subnet mask and how many equal subnets it creates.</li>
-            <li>For each subnet, mark the first address as the network address and the last address as the broadcast address.</li>
-            <li>Everything in between is usable host space.</li>
+            <li>A parent network contains one continuous address range.</li>
+            <li>When you increase the prefix length, that range is split into smaller equal-sized networks.</li>
+            <li>Every subnet reserves the first address as the network address and the last address as the broadcast address.</li>
+            <li>The remaining addresses in the middle are usable by hosts.</li>
+            <li>More subnets means smaller host ranges inside each subnet.</li>
           </ol>
         </div>
       }
@@ -405,13 +309,10 @@ export function SubnettingExperience() {
             </div>
           )}
 
-          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            <p className="font-medium text-slate-900">Result</p>
-            <p className="mt-2">{plannerNote}</p>
-            {error ? <p className="mt-2 text-rose-600">{error}</p> : null}
-          </div>
+          {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         </div>
       }
+      visualizationTitle="Address Space"
       visualization={
         <div className="space-y-6">
           <div className="rounded-lg border border-slate-200 p-4">
@@ -420,7 +321,7 @@ export function SubnettingExperience() {
               Dots represent the address range conceptually. After generation, the dots are grouped and colored by subnet.
             </p>
 
-            {!hasGeneratedSplit ? (
+            {!hasGenerated ? (
               <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-3 text-sm font-medium text-slate-700">
                   Parent network: {parsedNetwork.cidrInput}
@@ -437,10 +338,8 @@ export function SubnettingExperience() {
             ) : (
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {previewSubnets.map((subnet, index) => (
-                  <motion.div
+                  <div
                     key={subnet.cidr}
-                    initial={{ opacity: 0.5, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
                     className="rounded-md border border-slate-200 bg-slate-50 p-4"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -458,125 +357,102 @@ export function SubnettingExperience() {
                     </div>
                     <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
                       <div className="grid grid-cols-8 gap-2">
-                      {Array.from({ length: dotsPerSubnet }, (_, dotIndex) => {
-                        const isReserved =
-                          currentStep >= 3 &&
-                          (dotIndex === 0 || dotIndex === dotsPerSubnet - 1);
+                        {Array.from({ length: dotsPerSubnet }, (_, dotIndex) => {
+                          const isReserved =
+                            dotIndex === 0 || dotIndex === dotsPerSubnet - 1;
 
-                        return (
-                          <span
-                            key={`${subnet.cidr}-${dotIndex}`}
-                            className={`h-3 w-3 rounded-full ${
-                              isReserved
-                                ? "bg-rose-500"
-                                : subnetPreviewColors[index % subnetPreviewColors.length]
-                            }`}
-                          />
-                        );
-                      })}
+                          return (
+                            <span
+                              key={`${subnet.cidr}-${dotIndex}`}
+                              className={`h-3 w-3 rounded-full ${
+                                isReserved
+                                  ? "bg-rose-500"
+                                  : subnetPreviewColors[index % subnetPreviewColors.length]
+                              }`}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                     <p className="mt-3 text-xs leading-6 text-slate-500">
                       Reserved: {subnet.networkAddress} (network) and {subnet.broadcastAddress} (broadcast)
                     </p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
 
-            {totalSubnets > previewSubnetCount ? (
+            {hasGenerated && totalSubnets > previewSubnetCount ? (
               <p className="mt-4 text-xs text-slate-500">
                 Showing the first {previewSubnetCount} subnet groups out of {totalSubnets.toLocaleString()} total subnets.
               </p>
             ) : null}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Parent network", value: parsedNetwork.cidrInput },
-              { label: "Generated prefix", value: `/${effectivePrefix}` },
-              { label: "Subnets created", value: totalSubnets.toLocaleString() },
-              { label: "Addresses per subnet", value: addressesPerSubnet.toLocaleString() },
-              { label: "Usable hosts per subnet", value: firstSubnet.usableHosts.toLocaleString() },
-              { label: "First subnet host range", value: firstSubnet.hostRange },
-              { label: "Reserved network", value: firstSubnet.networkAddress },
-              { label: "Reserved broadcast", value: firstSubnet.broadcastAddress },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-md border border-slate-200 bg-slate-50 p-4"
-              >
-                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                  {item.label}
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">{item.value}</p>
+          {hasGenerated ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: "Parent network", value: parsedNetwork.cidrInput },
+                  { label: "Generated prefix", value: `/${effectivePrefix}` },
+                  { label: "Subnets created", value: totalSubnets.toLocaleString() },
+                  { label: "Addresses per subnet", value: addressesPerSubnet.toLocaleString() },
+                  { label: "Usable hosts per subnet", value: firstSubnet.usableHosts.toLocaleString() },
+                  { label: "First subnet host range", value: firstSubnet.hostRange },
+                  { label: "Reserved network", value: firstSubnet.networkAddress },
+                  { label: "Reserved broadcast", value: firstSubnet.broadcastAddress },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-md border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">{item.value}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200">
-            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-sm font-medium text-slate-900">Generated subnets</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Showing the first {shownTableRows.length} subnet{shownTableRows.length === 1 ? "" : "s"}.
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-white">
-                  <tr className="text-left text-slate-500">
-                    <th className="px-4 py-3 font-medium">Subnet</th>
-                    <th className="px-4 py-3 font-medium">Network</th>
-                    <th className="px-4 py-3 font-medium">First host</th>
-                    <th className="px-4 py-3 font-medium">Last host</th>
-                    <th className="px-4 py-3 font-medium">Broadcast</th>
-                    <th className="px-4 py-3 font-medium">Reserved addresses</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {shownTableRows.map((subnet) => (
-                    <tr key={subnet.cidr}>
-                      <td className="px-4 py-3 text-slate-700">{subnet.id}</td>
-                      <td className="px-4 py-3 font-medium text-slate-900">{subnet.cidr}</td>
-                      <td className="px-4 py-3 text-slate-700">{subnet.firstHostAddress}</td>
-                      <td className="px-4 py-3 text-slate-700">{subnet.lastHostAddress}</td>
-                      <td className="px-4 py-3 text-slate-700">{subnet.broadcastAddress}</td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {subnet.networkAddress}, {subnet.broadcastAddress}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              <div className="overflow-hidden rounded-lg border border-slate-200">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-900">Generated subnets</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Showing the first {shownTableRows.length} subnet{shownTableRows.length === 1 ? "" : "s"}.
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead className="bg-white">
+                      <tr className="text-left text-slate-500">
+                        <th className="px-4 py-3 font-medium">Subnet</th>
+                        <th className="px-4 py-3 font-medium">Network</th>
+                        <th className="px-4 py-3 font-medium">First host</th>
+                        <th className="px-4 py-3 font-medium">Last host</th>
+                        <th className="px-4 py-3 font-medium">Broadcast</th>
+                        <th className="px-4 py-3 font-medium">Reserved addresses</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {shownTableRows.map((subnet) => (
+                        <tr key={subnet.cidr}>
+                          <td className="px-4 py-3 text-slate-700">{subnet.id}</td>
+                          <td className="px-4 py-3 font-medium text-slate-900">{subnet.cidr}</td>
+                          <td className="px-4 py-3 text-slate-700">{subnet.firstHostAddress}</td>
+                          <td className="px-4 py-3 text-slate-700">{subnet.lastHostAddress}</td>
+                          <td className="px-4 py-3 text-slate-700">{subnet.broadcastAddress}</td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {subnet.networkAddress}, {subnet.broadcastAddress}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
-      }
-      controls={
-        <AnimationControls
-          isPlaying={isPlaying}
-          canGoBack={canGoBack}
-          canGoForward={canGoForward}
-          onPlay={play}
-          onPause={pause}
-          onReset={reset}
-          onNext={nextStep}
-          onPrevious={previousStep}
-        />
-      }
-      stepIndicator={
-        <StepIndicator
-          steps={steps}
-          currentStep={currentStep}
-          onStepSelect={selectStep}
-        />
-      }
-      explanation={
-        <ExplanationPanel
-          step={steps[currentStep]}
-          currentStep={currentStep}
-          totalSteps={steps.length}
-        />
       }
     />
   );
