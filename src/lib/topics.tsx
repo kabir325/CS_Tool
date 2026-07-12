@@ -1,4 +1,5 @@
-import { ArrowRightLeft, Network, SplitSquareVertical } from "lucide-react";
+import { ArrowRightLeft, Network, Route, SplitSquareVertical } from "lucide-react";
+import { NatExperience } from "@/components/topics/NatExperience";
 import { SubnettingExperience } from "@/components/topics/SubnettingExperience";
 import { TcpHandshakeExperience } from "@/components/topics/TcpHandshakeExperience";
 import { VlansExperience } from "@/components/topics/VlansExperience";
@@ -38,6 +39,17 @@ const networkingTopics: TopicDefinition[] = [
       "The three-way handshake is the process TCP uses to synchronize sequence numbers and confirm both sides are ready.",
     icon: ArrowRightLeft,
     component: TcpHandshakeExperience,
+  },
+  {
+    sectionSlug: "networking",
+    slug: "nat",
+    title: "Network Address Translation (NAT)",
+    description:
+      "See how a router rewrites private source addresses into a public IP and uses a NAT table to map replies back to the right host.",
+    introduction:
+      "NAT allows multiple private hosts to share one public IPv4 address by translating source addresses and tracking active flows.",
+    icon: Route,
+    component: NatExperience,
   },
 ];
 
