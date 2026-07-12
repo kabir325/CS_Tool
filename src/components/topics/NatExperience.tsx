@@ -170,7 +170,7 @@ function NatTablePreview({
     currentStep < 2 ? "No translation yet" : currentStep === 2 ? "Created" : currentStep === 3 ? "Used for reply" : "Matched and forwarded";
 
   return (
-    <div className="space-y-4 border-t border-slate-200 pt-6">
+    <div className="space-y-4">
       <div className="space-y-2">
         <h3 className="text-base font-semibold text-slate-900">NAT Table</h3>
         <p className="text-sm leading-7 text-slate-600">
@@ -179,24 +179,40 @@ function NatTablePreview({
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="grid grid-cols-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-          <span>Inside Local</span>
-          <span>Inside Global</span>
-          <span>Outside Global</span>
-          <span>Status</span>
+        <div className="overflow-x-auto">
+          <table className="min-w-[760px] w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[28%]" />
+              <col className="w-[24%]" />
+              <col className="w-[20%]" />
+            </colgroup>
+            <thead className="bg-slate-50">
+              <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <th className="px-4 py-3">Inside Local</th>
+                <th className="px-4 py-3">Inside Global</th>
+                <th className="px-4 py-3">Outside Global</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hasEntry ? (
+                <tr className="align-top text-slate-700">
+                  <td className="px-4 py-4 font-mono break-all">{host.privateIp}:{host.sourcePort}</td>
+                  <td className="px-4 py-4 font-mono break-all">{routerPublicIp}:{host.translatedPort}</td>
+                  <td className="px-4 py-4 font-mono break-all">{serverIp}:443</td>
+                  <td className="px-4 py-4 font-medium text-slate-900">{stateLabel}</td>
+                </tr>
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-4 py-4 text-slate-500">
+                    No entry yet. The mapping appears when the router performs translation.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        {hasEntry ? (
-          <div className="grid grid-cols-4 px-4 py-4 text-sm text-slate-700">
-            <span className="font-mono">{host.privateIp}:{host.sourcePort}</span>
-            <span className="font-mono">{routerPublicIp}:{host.translatedPort}</span>
-            <span className="font-mono">{serverIp}:443</span>
-            <span className="font-medium text-slate-900">{stateLabel}</span>
-          </div>
-        ) : (
-          <div className="px-4 py-4 text-sm text-slate-500">
-            No entry yet. The mapping appears when the router performs translation.
-          </div>
-        )}
       </div>
     </div>
   );
@@ -513,6 +529,8 @@ export function NatExperience() {
               </div>
             </dl>
           </div>
+
+          <NatTablePreview host={selectedHost} currentStep={currentStep} />
         </div>
       }
       controls={
@@ -535,14 +553,11 @@ export function NatExperience() {
         />
       }
       explanation={
-        <div className="space-y-6">
-          <ExplanationPanel
-            step={steps[currentStep]}
-            currentStep={currentStep}
-            totalSteps={steps.length}
-          />
-          <NatTablePreview host={selectedHost} currentStep={currentStep} />
-        </div>
+        <ExplanationPanel
+          step={steps[currentStep]}
+          currentStep={currentStep}
+          totalSteps={steps.length}
+        />
       }
     />
   );
